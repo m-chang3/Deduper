@@ -1,0 +1,21 @@
+#Deduper Pseudocode:
+Define the problem:
+
+PCR duplicates, an artifact of PCR amplification, are EXACT copies of one single molecule of DNA. These duplicates can cause problems in the downstream analysis (genome assembly, haplotypes / heterozygosity, RNA differential expression).
+In order to remove these duplicates, we must know several pieces of information. PCR duplicates (as opposed to different coverage reads) will have the same alignment position (location, chromosome, and strand) as each other AND will have the same Unique Molecular Index (UMI).
+For each read, chromosome information can be found in the SAM header (column 3, RNAME) while position information can be found in column 4. Strand specificity can be found in the Bitwise FLAG (column 2).
+In the bitwise flag, bit 16 or 32 must be set the same as the other putative duplicates (if ((flag & 16) == 16): revcomp == False). 
+Position information must incorporate soft-clipping information for absolute position instead of relative position (given by POS in col 4 of SAM file). Here, the CIGAR string must be considered. If there is any soft-clipping in the CIGAR string (S), the absolute position must be POS - (# soft clipped bases ON THE LEFT SIDE before the next match (M)).
+Finally, the UMI must match. The UMI information is in the header line and was put there by Leslie.
+Only the FIRST PCR duplicate should be retained -- write them to a new file.
+
+
+Write examples:
+Include a properly formatted input sam file
+Include a properly formatted expected output sam file
+Develop your algorithm using pseudocode
+Determine high level functions
+Description
+Function headers
+Test examples (for individual functions)
+Return statement
