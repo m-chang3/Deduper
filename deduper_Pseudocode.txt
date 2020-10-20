@@ -1,21 +1,71 @@
-#Deduper Pseudocode:
+Matt Chang 
+10/20/20
+Deduper Pseudocode:
+
 Define the problem:
 
 PCR duplicates, an artifact of PCR amplification, are EXACT copies of one single molecule of DNA. These duplicates can cause problems in the downstream analysis (genome assembly, haplotypes / heterozygosity, RNA differential expression).
 In order to remove these duplicates, we must know several pieces of information. PCR duplicates (as opposed to different coverage reads) will have the same alignment position (location, chromosome, and strand) as each other AND will have the same Unique Molecular Index (UMI).
 For each read, chromosome information can be found in the SAM header (column 3, RNAME) while position information can be found in column 4. Strand specificity can be found in the Bitwise FLAG (column 2).
-In the bitwise flag, bit 16 or 32 must be set the same as the other putative duplicates (if ((flag & 16) == 16): revcomp == False). 
+In the bitwise flag, bit 16 or 32 must be set the same as the other putative duplicates (if ((flag & 16) == 16): revcomp == False) and bit 4 determines if it's a mapped read (if flag & 4 == 4: mapped == TRUE). 
 Position information must incorporate soft-clipping information for absolute position instead of relative position (given by POS in col 4 of SAM file). Here, the CIGAR string must be considered. If there is any soft-clipping in the CIGAR string (S), the absolute position must be POS - (# soft clipped bases ON THE LEFT SIDE before the next match (M)).
 Finally, the UMI must match. The UMI information is in the header line and was put there by Leslie.
 Only the FIRST PCR duplicate should be retained -- write them to a new file.
 
 
-Write examples:
-Include a properly formatted input sam file
-Include a properly formatted expected output sam file
-Develop your algorithm using pseudocode
-Determine high level functions
-Description
-Function headers
-Test examples (for individual functions)
-Return statement
+
+Pseudocode:
+
+
+Read in SAM file.
+
+Sort with samtools -Sort.
+    Sort first by UMI
+    Then sort by Chromosome
+    Then sort by Strand
+
+Determine position and strand: get_pos_strand()
+    Take position information from col 4 of SAM file
+    Take soft-clipping information from CIGAR string in column 6
+    Strand information from the bitwise flag:
+        If the strand is reverse complemented: 
+            position = POS (col 4) + CIGAR information (i.e. if CIGAR = 3S70M3S and position = 1, absolute position = 1 + 70 + 3 (ignore all information before the first "M"))
+        Else, if strand is not reverse complemented:
+            Position + CIGAR information (subtract any "S" before the first "M"). For same example above, absolute position = -2
+    Return the absolute position
+    Return strand information (i.e. rev comp or not)
+
+    Example Input Information: NS500451:154:HWKTMBGXX:1:11101:1232:1273:GATCGAAA       0       2       76754545        36      7S71M
+    Example Output: position: 7675437, rev comp = FALSE
+
+
+Determine chromosome information: get_chrom()
+    Take chrom information from column 3. Store as a string.
+    Return Chrom String
+
+    Example Input: NS500451:154:HWKTMBGXX:1:11101:1232:1273:GATCGAAA       0       2       76754545        36      7S71M
+    Example Output: 2
+
+
+Determine UMI: get_UMI()
+    Take the last 8 characters from header column. Store as a string.
+    Return UMI string
+    Example Header Column: NS500451:154:HWKTMBGXX:1:11101:10568:1142:GAGAAGTC 
+    Example UMI string returned: GAGAAGTC 
+
+Create an empty dictionary to hold position.
+Create an array to store and compare full record information.
+    Read in full records.
+    If UMI changes, clear array.
+        Else if the chromosome changes, clear array.
+        Else If the strandedness information changes (i.e. goes from rev comp to not or vice versa), clear array.
+    Else, input ABSOLUTE position into the dictionary.
+        If position already exists in dictionary, go to next record.
+        If position DOES NOT already exist in dictionary, output record to new file
+
+The above system of clearing records when UMI/Chromosome/Strandedness change between records and inputting only position value into a dictionary should limit the amount of memory needed while ensuring parameters compared are the same.
+
+
+
+
+
