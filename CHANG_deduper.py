@@ -4,17 +4,18 @@ import itertools
 import re
 import gzip
 import csv
-
+from argparse import RawTextHelpFormatter
 
 # Get Arguments
 def get_args():
-    parser = argparse.ArgumentParser(description="This script takes a SORTED (by chromosome), unzipped SAM file with known UMI's appended to the first column in the format <ColumnInfo>:<UMI>. File must be from single-end reads. Outputs a SAM file without PCR Duplicates. Arguments include: \n --file: SAM file of single-end reads (unzipped) \n --umi: File containing known UMI's. No header information. \n --write_dups: Optional argument to write the found PCR duplicates to a file called 'PCRDuplicates.txt' in the current working directory \n --set_bits_only: Rather than remove all PCR duplicates from the file, simply mark them with the 1024 bit in the bit flag column (as per SAM format). PCR Duplicates can still be written out to a separate file. --not_sorted: Input an unsorted SAM file -- pysam.sort function will sort it for you. User must have pysam library installed. SAM file must not be truncated!!!")
-    parser.add_argument("-f", "--file", help="SAMfile", required=True)
-    parser.add_argument("-u", "--umi", help="umifile", required=True)
-    parser.add_argument("-wd", "--write_dups", help="0 to write duplicates to separate outfile; 1 to ignore", required=False)
-    parser.add_argument("-sbo", "--set_bits_only", help="0 to output a file still containing PCR Duplicates but with the 1024 bit set in the flag, 1 to ignore", required=False)
-    parser.add_argument("-ns", "--not_sorted", help="0 to input an unsorted SAM file. Utilizes 'pysam' library ; 1 to ignore", required=False)
+    parser = argparse.ArgumentParser(description=str("This script takes a SORTED (by chromosome), unzipped SAM file with known UMI's appended to the first column in the format <ColumnInfo>:<UMI>. File must be from single-end reads. Outputs a SAM file without PCR Duplicates." + "\n" + "Example usage (options provide for inputting an unsorted SAM file and writing PCR duplicates to their own file, but not setting the PCR Duplicate option in the bit flag.):" + "\n" + "python ./CHANG_deduper.py -f <SAM_file_path> -u <UMI_index_file_path> -wd 0 -ns 0 -sbo 1"), formatter_class=RawTextHelpFormatter)
+    parser.add_argument("-f", "--file", help="SAM file of single-end reads (unzipped)", required=True)
+    parser.add_argument("-u", "--umi", help="File containing known UMI's. No header information, each UMI on its own line.", required=True)
+    parser.add_argument("-wd", "--write_dups", help="Optional argument to write the found PCR duplicates to a file called '<filename>_PCRDuplicates.txt' in the current working directory. 0 to write duplicates to separate outfile; 1 to ignore. Default is 1.", required=False)
+    parser.add_argument("-sbo", "--set_bits_only", help="Rather than remove all PCR duplicates from the file, simply mark them with the 1024 bit in the bit flag column (as per SAM format). PCR Duplicates can still be written out to a separate file using -wd. 0 to output a file still containing PCR Duplicates but with the 1024 bit set in the flag, 1 to ignore. Default is 1.", required=False)
+    parser.add_argument("-ns", "--not_sorted", help="Input an unsorted SAM file -- pysam's .sort() function will sort it for you. User must have pysam library installed. SAM file must not be truncated! 0 to input an unsorted SAM file; 1 to ignore. Default is 1.", required=False)
     return parser.parse_args()
+
 
 write_dups = 1
 ns = 1
@@ -143,7 +144,7 @@ with open(input_f, "rt") as sam:
 
 
                     
-                #Add up all values including the first M in the variable "count" then add that to initial position to yield true position
+                #Add up all values starting with (and including) the first M in the variable "count" then add that to initial position to yield true position
                 #print((x+1), len(cigar), 1)
                 for i in range(x-1,len(cigar),1):
                     if cigar[i].isnumeric() == True:
@@ -156,9 +157,8 @@ with open(input_f, "rt") as sam:
                 if "I" in cigar:
                     for i in range(len(cigar)):
                         if cigar[i] == "I":
-                            IndexI = i
-
-                    count = count - (int(cigar[IndexI - 1]))
+                            #IndexI = i
+                            count = count - (int(cigar[i - 1]))
 
                 true_pos = init_pos + count
 
