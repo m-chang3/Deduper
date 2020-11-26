@@ -135,10 +135,16 @@ with open(input_f, "rt") as sam:
                     if x != 0:
                         break
                     
-                #Add all numerical values from the elements that are numerical values after the first M until the end of the cigar string to the 
-                #position to find true position.
+                #Add all numerical values from the elements that are numerical values after (and including) the first M until the end of the cigar string to the 
+                #initial position to find true position. Insertions to the reference genome should not be added to the count.
                 #
-                #Example: 52M16388N19M should yield true position = initial position OF A REVERSE READ + 16388 + 19 
+                # Example: 3S68M should yield true position = initial position + 68
+                #
+                # Example: 3S52M15D32I71M should yield true position = initial position + 52 + 15 + 71. 
+                #          WARNING: Insertions to the reference will automatically be included at the first step. They must be taken out in the following step. 
+                #          Therefore, the actual count will first = 52 + 15 + 32 + 71 and after the second step will = 52 + 15 + 32 + 71 - 32
+                # 
+                # Example: 52M16388N19M should yield true position = initial position OF A REVERSE READ + 52 + 16388 + 19 
                     
                 count = 0
 
