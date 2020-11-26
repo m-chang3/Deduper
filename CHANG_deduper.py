@@ -17,8 +17,10 @@ def get_args():
     return parser.parse_args()
 
 
+#Set Default Arguments
 write_dups = 1
 ns = 1
+sbo = 1
 
 args = get_args()
 input_f = args.file
@@ -27,47 +29,38 @@ write_dups = args.write_dups
 sbo = args.set_bits_only
 ns = args.not_sorted
 
+#Convert Optional Arguments to integers
 if sbo != None:
-    sbo = args.set_bits_only
     sbo = int(sbo)
 if write_dups != None:
-    write_dups = args.write_dups
     write_dups = int(write_dups)
 if ns != None:
-    ns = args.not_sorted
     ns = int(ns)
+
 
 
 #Define bad file for PCR Duplicates if writing duplicates to file
 if write_dups == 0:
     badfile = open("{}_PCRDuplicates.txt".format(input_f), "w")
 
+#Sort using pysam's sort function if -ns 0 is specified
 if ns == 0:
     import pysam
     #Sort input file
     pysam.sort("-o", input_f, "-O", "sam", input_f)
 
-#Initialize empty dictionary
-uniquedict = {}
-
-#Input UMI's to dictionary
-with open(umi, "r") as umi:
-    for line in umi:
-        line = line.strip()
-        uniquedict[line] = ()
-
-umi.close()
 
 numnondups = 0
 numdups = 0
 numstrings = 0
-
 true_pos_dict = {}
 true_pos = 0
 umi_key = ""
+chrom_global = ""
+
 deduped = open('{}_deduped'.format(input_f), "w")
 
-chrom_global = ""
+
 
 with open(input_f, "rt") as sam:
     '''Main Function: Grab all relevant information from the header line (initial position, chromosome, cigar string, UMI, flag). 
@@ -102,13 +95,13 @@ with open(input_f, "rt") as sam:
             #Reset the dictionary if the chromosome changes
             if chrom != chrom_global:
                 true_pos_dict = {}
-                #print(chrom_global)
+
             
             
             #Define directionality based on the flag
             if ((flag & 16) == 16):
                 direction = 0
-                #Direction 0is Reverse
+                #Direction 0 is Reverse
 
             else:
                 direction = 1
@@ -117,16 +110,10 @@ with open(input_f, "rt") as sam:
 
 
             #Adjust true position based on cigar string and directionality
-            if direction == 0: #Direction is Reverse, calculate true position
-                
-                #print("direction0")
-                m = 0
-                for i in range(len(cigar)):
-                    #print(cigar[i], "= cigar[i] at i =", i)
-                    if "M" in cigar[i]:
-                        m = m + 1
 
-                    #Identify the index where the first M occurs in the cigar string
+            if direction == 0: #Direction is Reverse, calculate true position
+
+                #Identify the index where the first M occurs in the cigar string
                 for i in range(len(cigar)):
                     x = 0
                     if cigar[i] == "M":
@@ -151,7 +138,7 @@ with open(input_f, "rt") as sam:
 
                     
                 #Add up all values starting with (and including) the first M in the variable "count" then add that to initial position to yield true position
-                #print((x+1), len(cigar), 1)
+ 
                 for i in range(x-1,len(cigar),1):
                     if cigar[i].isnumeric() == True:
                         count = count + int(cigar[i])
@@ -163,25 +150,24 @@ with open(input_f, "rt") as sam:
                 if "I" in cigar:
                     for i in range(len(cigar)):
                         if cigar[i] == "I":
-                            #IndexI = i
                             count = count - (int(cigar[i - 1]))
 
                 true_pos = init_pos + count
 
             if direction == 1: #Direction is Forward, calculate true position
-                #print("direction1")
+
                 
                 if cigar[1] == "M": #Example: 71M3S
                     true_pos = init_pos
 
                 elif cigar[1] == "S": #Example: 3S71M
                     true_pos = init_pos - int(cigar[0])
-                    #print("\n \n \n AdjustedForSoftClipped \n \n \n")
+
 
 
             #Determine if the same position and UMI have been located previously on the same chromosome indicating a PCR Duplicate:
             if true_pos in true_pos_dict and true_pos_dict[true_pos] == umi_key:
-                #print("PCR DUPLICATE", true_pos, umi_key, true_pos_dict[true_pos])
+                
                 numdups = numdups + 1
                 #If the user specified to set bits only
                 if sbo == 0:
@@ -209,8 +195,6 @@ with open(input_f, "rt") as sam:
                 numnondups = numnondups + 1
             #Assign the chromosome for the fully processed line as chrom_global to compare against the next read's chrom
             chrom_global = chrom
-#print(numnondups)
-#print(numdups)
-#print(numstrings)
+
 sam.close()
 
