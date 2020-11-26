@@ -101,7 +101,7 @@ with open(input_f, "rt") as sam:
             #Reset the dictionary if the chromosome changes
             if chrom != chrom_global:
                 true_pos_dict = {}
-                print(chrom_global)
+                #print(chrom_global)
             
             
             #Define directionality based on the flag
